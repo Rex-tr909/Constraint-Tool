@@ -16,7 +16,7 @@ async function InitScene() {
     const loadedHavok = await HavokPhysics();
     havokInstance = new BABYLON.HavokPlugin(true, loadedHavok);
     scene.enablePhysics(new BABYLON.Vector3(0, -100, 0), havokInstance);
-    scene.getPhysicsEngine().setSubTimeStep(10);
+    scene.getPhysicsEngine().setSubTimeStep(5);
 
     const camera = new BABYLON.ArcRotateCamera("Camera", 5, 1, 40, BABYLON.Vector3.Zero(), scene);
     camera.attachControl(canvas, true);
@@ -25,14 +25,13 @@ async function InitScene() {
 
     CreateConstraintTool();
     InitKeyboardControls();
+    InitClickForces();
 
     engine.runRenderLoop(() => {
         if (scene && scene.activeCamera) {
             scene.render();
         }
     });
-
-    scene.debugLayer.show();
 
     window.addEventListener("resize", () => {
         engine.resize();
@@ -63,88 +62,25 @@ function FilterMeshCollision(mesh) {
     mesh.physicsBody.shape.filterCollideMask = 2;
 }
 
+function InitClickForces() {
+    scene.onPointerPick = (event, pickInfo) => {
+        dynamicObjectPhysicsBody.applyImpulse(
+            scene.activeCamera.getDirection(BABYLON.Vector3.Forward()).scale(5000000),
+            pickInfo.pickedPoint
+        );
+    }
+}
+
 function InitKeyboardControls() {
-    let upPressed = false;
-    let downPressed = false;
-    let leftPressed = false;
-    let rightPressed = false;
-
-    let previousFrame = { upPressed: false, downPressed: false, leftPressed: false, rightPressed: false };
-
     scene.onKeyboardObservable.add(e => {
-        if (e.type == BABYLON.KeyboardEventTypes.KEYDOWN && e.event.key == "w")
-            upPressed = true;
-        else if (e.type == BABYLON.KeyboardEventTypes.KEYUP && e.event.key == "w")
-            upPressed = false;
-        else if (e.type == BABYLON.KeyboardEventTypes.KEYDOWN && (e.event.key == "a" || e.event.key == "j" || e.event.key == "ArrowLeft"))
-            leftPressed = true;
-        else if (e.type == BABYLON.KeyboardEventTypes.KEYUP && (e.event.key == "a" || e.event.key == "j" || e.event.key == "ArrowLeft"))
-            leftPressed = false;
-        else if (e.type == BABYLON.KeyboardEventTypes.KEYDOWN && e.event.key == "s")
-            downPressed = true;
-        else if (e.type == BABYLON.KeyboardEventTypes.KEYUP && e.event.key == "s")
-            downPressed = false;
-        else if (e.type == BABYLON.KeyboardEventTypes.KEYDOWN && (e.event.key == "d" || e.event.key == "l" || e.event.key == "ArrowRight"))
-            rightPressed = true;
-        else if (e.type == BABYLON.KeyboardEventTypes.KEYUP && (e.event.key == "d" || e.event.key == "l" || e.event.key == "ArrowRight"))
-            rightPressed = false;
-        else if (e.type == BABYLON.KeyboardEventTypes.KEYDOWN && (e.event.key == " "))
+        if (e.type == BABYLON.KeyboardEventTypes.KEYDOWN && (e.event.key == " "))
             SpaceAction();
-    });
-
-    scene.registerAfterRender(() => {
-        if (upPressed)
-            UpAction();
-
-        if (downPressed)
-            DownAction();
-
-        if (leftPressed)
-            LeftAction();
-
-        if (rightPressed)
-            RightAction();
-
-        previousFrame.upPressed = upPressed;
-        previousFrame.downPressed = downPressed;
-        previousFrame.leftPressed = leftPressed;
-        previousFrame.rightPressed = rightPressed;
     });
 }
 
 function SpaceAction() {
     dynamicObjectPhysicsBody.setLinearVelocity(BABYLON.Vector3.Zero());
     dynamicObjectPhysicsBody.setAngularVelocity(BABYLON.Vector3.Zero());
-}
-
-let forceScale = 10000000;
-
-function UpAction() {
-    dynamicObjectPhysicsBody.applyForce(
-        new BABYLON.Vector3(0, 0, 1).scale(forceScale),
-        new BABYLON.Vector3(0, -5, 10)
-    );
-}
-
-function DownAction() {
-    dynamicObjectPhysicsBody.applyForce(
-        new BABYLON.Vector3(0, 0, -1).scale(forceScale),
-        new BABYLON.Vector3(0, -5, -10)
-    );
-}
-
-function LeftAction() {
-    dynamicObjectPhysicsBody.applyForce(
-        new BABYLON.Vector3(-1, 0, 0).scale(forceScale),
-        new BABYLON.Vector3(-10, -5, 0)
-    );
-}
-
-function RightAction() {
-    dynamicObjectPhysicsBody.applyForce(
-        new BABYLON.Vector3(1, 0, 0).scale(forceScale),
-        new BABYLON.Vector3(10, -5, 0)
-    );
 }
 
 function CreateConstraintTool() {
@@ -196,7 +132,7 @@ function CreateDebugItems() {
 }
 
 function ValueSlider(jointValues, index, createJointFunction) {
-    // Skip over values not required for most use cases
+    // Skip over values that aren't required for majority of use cases
     if (index > 5 && index < 9) return;
     if (index > 14 && index < 18) return;
     if (index == 18 || index == 19) return;
@@ -230,7 +166,7 @@ function ValueSlider(jointValues, index, createJointFunction) {
     slider.oninput = () => { jointValues[index] = slider.value; feedback.innerText = jointValues[index]; createJointFunction() };
     slider.onclick = (e) => { if (e.ctrlKey) { jointValues[index] = slider.value = 0; feedback.innerText = jointValues[index]; createJointFunction() } };
 
-    const slightlyLessThanPi = 3.14;
+    const slightlyLessThanPi = 3;
 
     // Axis Settings
     if (index > 2 && index < 6 || index > 11 && index < 15) {
@@ -304,7 +240,6 @@ function CreateJoint(v) {
     );
 
     dynamicObjectPhysicsBody.addConstraint(staticObjectPhysicsBody, dynamicJoint);
-
     pivotStaticObject.position = new BABYLON.Vector3(v[9], v[10], v[11]);
 
     firstCreation = false;
