@@ -10,7 +10,7 @@ let dynamicObjectPhysicsBody = null;
 InitScene();
 
 async function InitScene() {
-    const engine = await new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true, disableWebGL2Support: false });
+    const engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true, disableWebGL2Support: false });
     scene = new BABYLON.Scene(engine);
 
     const loadedHavok = await HavokPhysics();
@@ -92,11 +92,11 @@ function CreateConstraintTool() {
     debugColours[4] = new BABYLON.Color4(0, 1, 1, 1);
     debugColours[5] = new BABYLON.Color4(0, 0, 1, 1);
 
-    const staticObjectMesh = BABYLON.MeshBuilder.CreateBox("Object A", { height: 1, width: 4, depth: 8, faceColors: debugColours });
+    const staticObjectMesh = BABYLON.MeshBuilder.CreateBox("Static Mesh", { height: 1, width: 4, depth: 8, faceColors: debugColours });
     staticObjectMesh.position = new BABYLON.Vector3(0, 0, 0);
     staticObjectPhysicsBody = AddStaticPhysics(staticObjectMesh);
 
-    const dynamicObjectMesh = BABYLON.MeshBuilder.CreateBox("Object B", { height: 1, width: 4, depth: 8, faceColors: debugColours });
+    const dynamicObjectMesh = BABYLON.MeshBuilder.CreateBox("Moving Mesh", { height: 1, width: 4, depth: 8, faceColors: debugColours });
     dynamicObjectMesh.position = new BABYLON.Vector3(0, 0, 0);
     dynamicObjectPhysicsBody = AddDynamicPhysics(dynamicObjectMesh, 0.1, 0.1, 0);
 
@@ -116,6 +116,7 @@ function ConstraintCreationAndDebug() {
 }
 
 let jointValues = [];
+let jointCode = "N/A";
 
 function CreateDebugItems() {
     jointValues = [];
@@ -140,11 +141,11 @@ function ValueSlider(jointValues, index, createJointFunction) {
 
     const subTitle = document.createElement("p");
 
-    if (index == 0) subTitle.innerText = "PIVOT A (dynamic)";
+    if (index == 0) subTitle.innerText = "PIVOT A (moving body)";
     if (index == 3) subTitle.innerText = "AXIS A";
     if (index == 6) subTitle.innerText = "PERP AXIS A (LIMIT)";
 
-    if (index == 9) subTitle.innerText = "PIVOT B (static)";
+    if (index == 9) subTitle.innerText = "PIVOT B (static body)";
     if (index == 12) subTitle.innerText = "AXIS B";
     if (index == 15) subTitle.innerText = "PERP AXIS B (LIMIT)";
 
@@ -156,6 +157,7 @@ function ValueSlider(jointValues, index, createJointFunction) {
     const feedback = document.createElement("span");
     feedback.innerText = jointValues[index];
 
+    // Pivot Settings
     const slider = document.createElement("input");
     slider.setAttribute("type", "range");
     slider.setAttribute("value", "0");
@@ -166,14 +168,14 @@ function ValueSlider(jointValues, index, createJointFunction) {
     slider.oninput = () => { jointValues[index] = slider.value; feedback.innerText = jointValues[index]; createJointFunction() };
     slider.onclick = (e) => { if (e.ctrlKey) { jointValues[index] = slider.value = 0; feedback.innerText = jointValues[index]; createJointFunction() } };
 
-    const slightlyLessThanPi = 3;
-
     // Axis Settings
     if (index > 2 && index < 6 || index > 11 && index < 15) {
         slider.setAttribute("min", "0");
         slider.setAttribute("max", "1");
         slider.setAttribute("step", "0.1");
     }
+
+    const slightlyLessThanPi = 3;
 
     // Angular Constraint Settings
     if (index > 19) {
@@ -243,4 +245,39 @@ function CreateJoint(v) {
     pivotStaticObject.position = new BABYLON.Vector3(v[9], v[10], v[11]);
 
     firstCreation = false;
+
+    jointCode = `const customJoint = new BABYLON.Physics6DoFConstraint(
+        {
+            pivotA: new BABYLON.Vector3(${v[0]}, ${v[1]}, ${v[2]}),
+            axisA: new BABYLON.Vector3(${v[3]}, ${v[4]}, ${v[5]}),
+            pivotB: new BABYLON.Vector3(${v[9]}, ${v[10]}, ${v[11]}),
+            axisB: new BABYLON.Vector3(${v[12]}, ${v[13]}, ${v[14]}),
+        },
+        [
+            {
+                axis: BABYLON.PhysicsConstraintAxis.LINEAR_DISTANCE,
+                minLimit: ${v[18]},
+                maxLimit: ${v[19]},
+            },
+            {
+                axis: BABYLON.PhysicsConstraintAxis.ANGULAR_X,
+                minLimit: ${v[20]},
+                maxLimit: ${v[21]},
+            },
+            {
+                axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Y,
+                minLimit: ${v[22]},
+                maxLimit: ${v[23]},
+            },
+            {
+                axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Z,
+                minLimit: ${v[24]},
+                maxLimit: ${v[25]},
+            }
+        ],
+        scene
+    );`
+
+    const codeCopy = document.getElementById("codeCopy");
+    codeCopy.innerText = jointCode;
 }
