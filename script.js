@@ -85,12 +85,12 @@ function SpaceAction() {
 
 function CreateConstraintTool() {
     const debugColours = [];
-    debugColours[0] = new BABYLON.Color4(1, 0, 1, 1);
-    debugColours[1] = new BABYLON.Color4(1, 0, 0, 1);
-    debugColours[2] = new BABYLON.Color4(0, 1, 0, 1);
-    debugColours[3] = new BABYLON.Color4(1, 1, 0, 1);
-    debugColours[4] = new BABYLON.Color4(0, 1, 1, 1);
-    debugColours[5] = new BABYLON.Color4(0, 0, 1, 1);
+    debugColours[0] = new BABYLON.Color3(1, 0, 1);
+    debugColours[1] = new BABYLON.Color3(1, 0, 0);
+    debugColours[2] = new BABYLON.Color3(0, 1, 0);
+    debugColours[3] = new BABYLON.Color3(1, 1, 0);
+    debugColours[4] = new BABYLON.Color3(0, 1, 1);
+    debugColours[5] = new BABYLON.Color3(0, 0, 1);
 
     const staticObjectMesh = BABYLON.MeshBuilder.CreateBox("Static Mesh", { height: 1, width: 4, depth: 8, faceColors: debugColours });
     staticObjectMesh.position = new BABYLON.Vector3(0, 0, 0);
@@ -113,17 +113,20 @@ function ConstraintCreationAndDebug() {
     debugHTML.append(debugSection);
 
     CreateDebugItems();
+    CreateExamplesList();
 }
 
-let jointValues = [];
+let jointValues = [0, 0, -4,
+    1, 0, 0,
+    0, 0, 0,
+    1, 0, 0,
+    -3, 3, 0, 0, 0, 0];
+
 let jointCode = "N/A";
 
 function CreateDebugItems() {
-    jointValues = [];
-
-    for (let i = 0; i < 32; i++) {
+    for (let i = 0; i < 18; i++) {
         let index = i;
-        jointValues[index] = 0;
         ValueSlider(jointValues, index, () => CreateJoint(jointValues));
     }
 
@@ -133,26 +136,13 @@ function CreateDebugItems() {
 }
 
 function ValueSlider(jointValues, index, createJointFunction) {
-    // Skip over values that aren't required for majority of use cases
-    if (index > 5 && index < 9) return;
-    if (index > 14 && index < 18) return;
-    if (index == 18 || index == 19) return;
-    if (index > 25) return;
-
     const subTitle = document.createElement("p");
 
     if (index == 0) subTitle.innerText = "PIVOT A (moving body)";
     if (index == 3) subTitle.innerText = "AXIS A";
-    if (index == 6) subTitle.innerText = "PERP AXIS A (LIMIT)";
-
-    if (index == 9) subTitle.innerText = "PIVOT B (static body)";
-    if (index == 12) subTitle.innerText = "AXIS B";
-    if (index == 15) subTitle.innerText = "PERP AXIS B (LIMIT)";
-
-    if (index == 18) subTitle.innerText = "MIN DISTANCE (LIMIT)";
-    if (index == 19) subTitle.innerText = "MAX DISTANCE (LIMIT)";
-    if (index == 20) subTitle.innerText = "ANGULAR (CONSTRAINT) (x min, x max, y min, y max, z min, z max)";
-    if (index == 26) subTitle.innerText = "LINEAR (CONSTRAINT) (x min, x max, y min, y max, z min, z max)";
+    if (index == 6) subTitle.innerText = "PIVOT B (static body)";
+    if (index == 9) subTitle.innerText = "AXIS B";
+    if (index == 12) subTitle.innerText = "ANGULAR (CONSTRAINT) (x min, x max, y min, y max, z min, z max)";
 
     const feedback = document.createElement("span");
     feedback.innerText = jointValues[index];
@@ -160,7 +150,6 @@ function ValueSlider(jointValues, index, createJointFunction) {
     // Pivot Settings
     const slider = document.createElement("input");
     slider.setAttribute("type", "range");
-    slider.setAttribute("value", "0");
     slider.setAttribute("min", "-10");
     slider.setAttribute("max", "10");
     slider.setAttribute("step", "0.5");
@@ -169,7 +158,7 @@ function ValueSlider(jointValues, index, createJointFunction) {
     slider.onclick = (e) => { if (e.ctrlKey) { jointValues[index] = slider.value = 0; feedback.innerText = jointValues[index]; createJointFunction() } };
 
     // Axis Settings
-    if (index > 2 && index < 6 || index > 11 && index < 15) {
+    if (index > 2 && index < 6 || index > 8 && index < 12) {
         slider.setAttribute("min", "0");
         slider.setAttribute("max", "1");
         slider.setAttribute("step", "0.1");
@@ -178,11 +167,17 @@ function ValueSlider(jointValues, index, createJointFunction) {
     const slightlyLessThanPi = 3;
 
     // Angular Constraint Settings
-    if (index > 19) {
+    if (index > 11) {
         slider.setAttribute("min", -slightlyLessThanPi);
         slider.setAttribute("max", slightlyLessThanPi);
         slider.setAttribute("step", slightlyLessThanPi / 8);
     }
+
+    createJointFunction();
+
+    slider.setAttribute("value", jointValues[index]);
+    slider.setAttribute("id", "slider" + index);
+    feedback.setAttribute("id", "feedback" + index);
 
     const debugSection = document.createElement("div");
     debugSection.append(subTitle);
@@ -201,9 +196,8 @@ function CreateJoint(v) {
         havokInstance.disposeConstraint(dynamicJoint);
     }
 
-    const c = new BABYLON.Color3(1, 0.5, 0);
-
     if (firstCreation) {
+        const c = new BABYLON.Color3(1, 0.5, 0);
         pivotStaticObject = BABYLON.MeshBuilder.CreateBox("Pivot Static", { size: 0.5, faceColors: [c, c, c, c, c, c] });
         pivotStaticObject.position = new BABYLON.Vector3(0, 0, 0);
         pivotStaticObject.renderingGroupId = 1;
@@ -213,36 +207,36 @@ function CreateJoint(v) {
         {
             pivotA: new BABYLON.Vector3(v[0], v[1], v[2]),
             axisA: new BABYLON.Vector3(v[3], v[4], v[5]),
-            pivotB: new BABYLON.Vector3(v[9], v[10], v[11]),
-            axisB: new BABYLON.Vector3(v[12], v[13], v[14]),
+            pivotB: new BABYLON.Vector3(v[6], v[7], v[8]),
+            axisB: new BABYLON.Vector3(v[9], v[10], v[11]),
         },
         [
             {
                 axis: BABYLON.PhysicsConstraintAxis.LINEAR_DISTANCE,
-                minLimit: v[18],
-                maxLimit: v[19],
+                minLimit: 0,
+                maxLimit: 0,
             },
             {
                 axis: BABYLON.PhysicsConstraintAxis.ANGULAR_X,
-                minLimit: v[20],
-                maxLimit: v[21],
+                minLimit: v[12],
+                maxLimit: v[13],
             },
             {
                 axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Y,
-                minLimit: v[22],
-                maxLimit: v[23],
+                minLimit: v[14],
+                maxLimit: v[15],
             },
             {
                 axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Z,
-                minLimit: v[24],
-                maxLimit: v[25],
+                minLimit: v[16],
+                maxLimit: v[17],
             }
         ],
         scene
     );
 
     dynamicObjectPhysicsBody.addConstraint(staticObjectPhysicsBody, dynamicJoint);
-    pivotStaticObject.position = new BABYLON.Vector3(v[9], v[10], v[11]);
+    pivotStaticObject.position = new BABYLON.Vector3(v[6], v[7], v[8]);
 
     firstCreation = false;
 
@@ -250,29 +244,29 @@ function CreateJoint(v) {
         {
             pivotA: new BABYLON.Vector3(${v[0]}, ${v[1]}, ${v[2]}),
             axisA: new BABYLON.Vector3(${v[3]}, ${v[4]}, ${v[5]}),
-            pivotB: new BABYLON.Vector3(${v[9]}, ${v[10]}, ${v[11]}),
-            axisB: new BABYLON.Vector3(${v[12]}, ${v[13]}, ${v[14]}),
+            pivotB: new BABYLON.Vector3(${v[6]}, ${v[7]}, ${v[8]}),
+            axisB: new BABYLON.Vector3(${v[9]}, ${v[10]}, ${v[11]}),
         },
         [
             {
                 axis: BABYLON.PhysicsConstraintAxis.LINEAR_DISTANCE,
-                minLimit: ${v[18]},
-                maxLimit: ${v[19]},
+                minLimit: 0,
+                maxLimit: 0,
             },
             {
                 axis: BABYLON.PhysicsConstraintAxis.ANGULAR_X,
-                minLimit: ${v[20]},
-                maxLimit: ${v[21]},
+                minLimit: ${v[12]},
+                maxLimit: ${v[13]},
             },
             {
                 axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Y,
-                minLimit: ${v[22]},
-                maxLimit: ${v[23]},
+                minLimit: ${v[14]},
+                maxLimit: ${v[15]},
             },
             {
                 axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Z,
-                minLimit: ${v[24]},
-                maxLimit: ${v[25]},
+                minLimit: ${v[16]},
+                maxLimit: ${v[17]},
             }
         ],
         scene
@@ -281,3 +275,134 @@ function CreateJoint(v) {
     const codeCopy = document.getElementById("codeCopy");
     codeCopy.innerText = jointCode;
 }
+
+function CreateExamplesList() {
+    const subTitle = document.createElement("p");
+    subTitle.innerText = "EXAMPLES (warning: overwrites above values)";
+
+    const examplesList = document.createElement("select");
+    examplesList.setAttribute("id", "examplesList");
+    examplesList.setAttribute("style", "width: 100%");
+
+    examplesDictionary.forEach(example => {
+        const newExample = document.createElement("option");
+        newExample.setAttribute("value", example.title);
+        newExample.innerText = example.title;
+        examplesList.appendChild(newExample);
+    });
+
+    examplesList.onchange = () => {
+        const selectedTitle = examplesList.value;
+        const selectedExample = examplesDictionary.find(e => e.title == selectedTitle);
+        const newjointValues = selectedExample.values;
+
+        for (let i = 0; i < jointValues.length; i++) {
+            const slider = document.getElementById("slider" + i);
+            slider.value = newjointValues[i];
+
+            const feedback = document.getElementById("feedback" + i);
+            feedback.innerText = newjointValues[i];
+
+            jointValues[i] = newjointValues[i];
+        }
+
+        CreateJoint(newjointValues);
+    }
+
+    const debugHTML = document.getElementById("debug");
+    debugHTML.append(subTitle);
+    debugHTML.append(examplesList);
+}
+
+const examplesDictionary = [
+    {
+        title: "Default",
+        values:
+            [0, 0, -4,
+                1, 0, 0,
+                0, 0, 0,
+                1, 0, 0,
+                -3, 3, 0, 0, 0, 0]
+    },
+    {
+        title: "Trapdoor",
+        values:
+            [0, 0, -4.5,
+                1, 0, 0,
+                0, 0, 4.5,
+                1, 0, 0,
+                -3, 0, 0, 0, 0, 0]
+    },
+    {
+        title: "Door",
+        values:
+            [0, 0, -4.5,
+                0, 1, 0,
+                0, 0, 4.5,
+                0, 1, 0,
+                0, 2.625, 0, 0, 0, 0]
+    }, 
+    {
+        title: "Fish Tail",
+        values:
+            [0, 0, 2.5,
+                0, 1, 0,
+                0, 0, -2.5,
+                1, 0, 0,
+                0, 0, -0.375, 0.375, 0, 0]
+    }, 
+    {
+        title: "Boxing Bag",
+        values:
+            [0, 0, 10,
+                0, 1, 0,
+                0, -1, 0,
+                1, 0, 0,
+                0.75, 2.625, -1.125, 1.125, 0, 0]
+    }, 
+    {
+        title: "Propeller",
+        values:
+            [0, 0, 4,
+                0, 1, 0,
+                0, 0, -4,
+                0, 1, 0,
+                0, 0, 0, 0, null, null]
+    },    
+    {
+        title: "Loose Trapdoor",
+        values:
+            [0, 0, -5,
+                1, 0, 0,
+                0, 0, 5,
+                1, 0, 0,
+                -2.625, 0, 0, 0, -0.375, 0.375]
+    }, 
+    {
+        title: "Orbit",
+        values:
+            [0, 0, 10,
+                0, 1, 0,
+                0, 0, 0,
+                0, 1, 0,
+                null, null, -0.375, 0.375, 0, 0]
+    },     
+    {
+        title: "Drill",
+        values:
+            [0, 0, -0.5,
+                0.5, 0.2, 1,
+                0, 0, 8,
+                0, 0, 1,
+                null, null, -0, 0, 0, 0]
+    },      
+    {
+        title: "Elbow",
+        values:
+            [0, 0, -5.5,
+                0.8, 1, 0,
+                0, 0, 5.5,
+                1, 0, 0,
+                0, 2.625, 0, 0, 0, 0.75]
+    }
+]
