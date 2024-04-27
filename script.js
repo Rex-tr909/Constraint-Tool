@@ -10,7 +10,8 @@ let dynamicObjectPhysicsBody = null;
 InitScene();
 
 async function InitScene() {
-    const engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true, disableWebGL2Support: false });
+    const engine = new BABYLON.WebGPUEngine(canvas);
+    await engine.initAsync();
     scene = new BABYLON.Scene(engine);
 
     const loadedHavok = await HavokPhysics();
@@ -404,5 +405,14 @@ const examplesDictionary = [
                 0, 0, 5.5,
                 1, 0, 0,
                 0, 2.625, 0, 0, 0, 0.75]
+    },      
+    {
+        title: "Turret",
+        values:
+            [0, 3.5, -1,
+                0, 1, 0.5,
+                0, 0, 2,
+                0, 1, 0.9,
+                -0.75, 0.75, 0, 0, -0.375, 0.375]
     }
 ]
